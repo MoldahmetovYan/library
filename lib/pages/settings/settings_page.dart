@@ -12,27 +12,42 @@ class SettingsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         children: [
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('О приложении'),
-            onTap: () => context.push('/settings/about'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.info_outline_rounded),
+                  title: const Text('О приложении'),
+                  subtitle: const Text('Версия, описание, контакты'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/settings/about'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.wifi_tethering_rounded),
+                  title: const Text('Realtime WebSocket'),
+                  subtitle: const Text(
+                    'Проверка подключения и обмена сообщениями',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/settings/realtime'),
+                ),
+              ],
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.wifi_tethering),
-            title: const Text('Realtime WebSocket'),
-            subtitle: const Text('Проверка соединения и обмена сообщениями'),
-            onTap: () => context.push('/settings/realtime'),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Выйти из аккаунта'),
-            onTap: () {
-              ref.read(userProvider.notifier).logout();
-              context.go('/login');
-            },
+          const SizedBox(height: 14),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.logout_rounded),
+              title: const Text('Выйти из аккаунта'),
+              subtitle: const Text('Завершить сессию на этом устройстве'),
+              onTap: () {
+                ref.read(userProvider.notifier).logout();
+                context.go('/login');
+              },
+            ),
           ),
         ],
       ),

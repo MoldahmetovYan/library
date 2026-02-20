@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../constants.dart';
+import '../../ui/app_backdrop.dart';
 
 class RealtimePage extends StatefulWidget {
   const RealtimePage({super.key});
@@ -36,9 +37,7 @@ class _RealtimePageState extends State<RealtimePage> {
   }
 
   void _addMessage(String text) {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     setState(() {
       _messages.insert(0, text);
       if (_messages.length > 100) {
@@ -48,9 +47,7 @@ class _RealtimePageState extends State<RealtimePage> {
   }
 
   void _connect() {
-    if (_connected) {
-      return;
-    }
+    if (_connected) return;
     try {
       final channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
       _subscription = channel.stream.listen(
@@ -95,75 +92,126 @@ class _RealtimePageState extends State<RealtimePage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Realtime WebSocket')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _connected ? 'Connected' : 'Disconnected',
-                    style: TextStyle(
-                      color: _connected ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.w600,
-                    ),
+      body: AppBackdrop(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: _connected ? Colors.green : Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _connected ? 'Connected' : 'Disconnected',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          FilledButton(
+                            onPressed: _connected ? null : _connect,
+                            child: const Text('Connect'),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: _connected ? _disconnect : null,
+                            child: const Text('Disconnect'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _messageCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Message',
+                          prefixIcon: Icon(Icons.chat_bubble_outline_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => _send(_messageCtrl.text.trim()),
+                              icon: const Icon(Icons.send_rounded),
+                              label: const Text('Send'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _send('ping'),
+                              icon: const Icon(Icons.wifi_tethering_rounded),
+                              label: const Text('Ping'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _connected ? null : _connect,
-                  child: const Text('Connect'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: _connected ? _disconnect : null,
-                  child: const Text('Disconnect'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Message',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _send(_messageCtrl.text.trim()),
-                  child: const Text('Send'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _send('ping'),
-                icon: const Icon(Icons.wifi_tethering),
-                label: const Text('Send ping'),
               ),
-            ),
-            const Divider(),
-            Expanded(
-              child: _messages.isEmpty
-                  ? const Center(child: Text('No messages yet'))
-                  : ListView.separated(
-                      reverse: true,
-                      itemCount: _messages.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) =>
-                          Text(_messages[index]),
-                    ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Expanded(
+                child: Card(
+                  child: _messages.isEmpty
+                      ? const Center(child: Text('No messages yet'))
+                      : ListView.separated(
+                          reverse: true,
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _messages.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 6),
+                          itemBuilder: (context, index) {
+                            final text = _messages[index];
+                            final inbound = text.startsWith('<=');
+                            final outbound = text.startsWith('=>');
+                            return Align(
+                              alignment: inbound
+                                  ? Alignment.centerLeft
+                                  : Alignment.centerRight,
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 420,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: inbound
+                                      ? scheme.secondaryContainer
+                                      : outbound
+                                      ? scheme.primaryContainer
+                                      : scheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(text),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

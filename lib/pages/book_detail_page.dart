@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants.dart';
 import '../models/book.dart';
 import '../providers/user_provider.dart';
+import '../ui/app_backdrop.dart';
 import '../utils/error_mapper.dart';
 import '../utils/json_utils.dart';
 
@@ -50,12 +51,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       await ref.read(userProvider.notifier).refreshHistory();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _error = mapErrorMessage(error);
-      });
+      setState(() => _error = mapErrorMessage(error));
     } finally {
-      if (!mounted) return;
-      setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -65,126 +65,196 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     final isFavorite = userState.favoriteIds.contains(widget.bookId);
     final book = _book;
 
-    Widget body;
-    if (book == null && _loading && _error == null) {
-      body = const Center(child: CircularProgressIndicator());
-    } else if (book == null && _error != null) {
-      body = Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Не удалось загрузить книгу: $_error',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _loadDetails,
-                child: const Text('Повторить'),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else {
-      final coverUrl = book?.coverUrl;
-      final genre = book?.genre;
-      final pdfUrl = book?.pdfUrl;
-      body = SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_loading) const LinearProgressIndicator(),
-            if (coverUrl != null) ...[
-              if (_loading) const SizedBox(height: 12),
-              Center(
-                child: CachedNetworkImage(
-                  imageUrl: '$apiBaseUrl$coverUrl',
-                  width: 220,
-                  placeholder: (_, __) => const SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  errorWidget: (_, __, ___) =>
-                      const Icon(Icons.image_not_supported, size: 48),
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              book?.author ?? 'Неизвестный автор',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (genre != null && genre.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(genre, style: const TextStyle(color: Colors.grey)),
-              ),
-            if (book?.averageRating != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber),
-                    const SizedBox(width: 4),
-                    Text(book!.averageRating!.toStringAsFixed(1)),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 12),
-            Text(
-              book?.description?.isNotEmpty == true
-                  ? book!.description!
-                  : 'Информация о книге недоступна.',
-              textAlign: TextAlign.justify,
-            ),
-            if (pdfUrl != null) ...[
-              const SizedBox(height: 16),
-              TextButton.icon(
-                onPressed: () => _openPdf(context, pdfUrl),
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Открыть PDF'),
-              ),
-            ],
-          ],
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(book?.title ?? 'Информация о книге'),
+        title: Text(book?.title ?? 'Книга'),
         actions: [
           IconButton(
-            tooltip: isFavorite
-                ? 'Удалить из избранного'
-                : 'Добавить в избранное',
+            tooltip: isFavorite ? 'Убрать из избранного' : 'В избранное',
             icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
+              isFavorite
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
               color: isFavorite ? Colors.red : null,
             ),
             onPressed: () =>
                 ref.read(userProvider.notifier).toggleFavorite(widget.bookId),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
             tooltip: 'Обновить',
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _loading ? null : _loadDetails,
           ),
         ],
       ),
-      body: body,
+      body: AppBackdrop(child: _buildBody(context, book)),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, Book? book) {
+    if (book == null && _loading && _error == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (book == null && _error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 36),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Не удалось загрузить книгу: $_error',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _loadDetails,
+                    child: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final scheme = Theme.of(context).colorScheme;
+    final coverUrl = book?.coverUrl;
+    final genre = book?.genre;
+    final pdfUrl = book?.pdfUrl;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
+      children: [
+        if (_loading) const LinearProgressIndicator(),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 120,
+                    height: 170,
+                    color: scheme.primaryContainer,
+                    child: coverUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: '$apiBaseUrl$coverUrl',
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                            errorWidget: (_, __, ___) =>
+                                const Icon(Icons.image_not_supported_rounded),
+                          )
+                        : Icon(
+                            Icons.menu_book_rounded,
+                            size: 44,
+                            color: scheme.onPrimaryContainer,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        book?.title ?? 'Без названия',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(book?.author ?? 'Неизвестный автор'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (genre != null && genre.isNotEmpty)
+                            _Tag(text: genre),
+                          if (book?.averageRating != null)
+                            _Tag(
+                              text:
+                                  '★ ${book!.averageRating!.toStringAsFixed(1)}',
+                              color: scheme.tertiaryContainer,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Описание',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  book?.description?.isNotEmpty == true
+                      ? book!.description!
+                      : 'Информация о книге недоступна.',
+                  textAlign: TextAlign.justify,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (pdfUrl != null) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => _openPdf(context, pdfUrl),
+            icon: const Icon(Icons.picture_as_pdf_rounded),
+            label: const Text('Открыть PDF'),
+          ),
+        ],
+      ],
     );
   }
 
   void _openPdf(BuildContext context, String path) {
-    final scaffold = ScaffoldMessenger.of(context);
-    scaffold.showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('PDF доступен по адресу: $apiBaseUrl$path')),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.text, this.color});
+
+  final String text;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(text),
     );
   }
 }
