@@ -14,6 +14,7 @@ import '../pages/login_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/register_page.dart';
 import '../pages/settings/about_page.dart';
+import '../pages/settings/realtime_page.dart';
 import '../pages/settings/settings_page.dart';
 import '../providers/user_provider.dart';
 
@@ -111,6 +112,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'about',
                     name: 'about',
                     builder: (context, state) => const AboutPage(),
+                  ),
+                  GoRoute(
+                    path: 'realtime',
+                    name: 'realtime',
+                    builder: (context, state) => const RealtimePage(),
                   ),
                 ],
               ),

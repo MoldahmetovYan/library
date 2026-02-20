@@ -19,6 +19,12 @@ class SettingsPage extends ConsumerWidget {
             title: const Text('О приложении'),
             onTap: () => context.push('/settings/about'),
           ),
+          ListTile(
+            leading: const Icon(Icons.wifi_tethering),
+            title: const Text('Realtime WebSocket'),
+            subtitle: const Text('Проверка соединения и обмена сообщениями'),
+            onTap: () => context.push('/settings/realtime'),
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),

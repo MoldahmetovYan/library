@@ -1,0 +1,171 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import '../../constants.dart';
+
+class RealtimePage extends StatefulWidget {
+  const RealtimePage({super.key});
+
+  @override
+  State<RealtimePage> createState() => _RealtimePageState();
+}
+
+class _RealtimePageState extends State<RealtimePage> {
+  final TextEditingController _messageCtrl = TextEditingController();
+  final List<String> _messages = <String>[];
+  WebSocketChannel? _channel;
+  StreamSubscription<dynamic>? _subscription;
+  bool _connected = false;
+
+  String get _wsUrl {
+    final uri = Uri.parse(apiBaseUrl);
+    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+    final host = uri.host;
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '$scheme://$host$port/ws/realtime';
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _channel?.sink.close();
+    _messageCtrl.dispose();
+    super.dispose();
+  }
+
+  void _addMessage(String text) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _messages.insert(0, text);
+      if (_messages.length > 100) {
+        _messages.removeLast();
+      }
+    });
+  }
+
+  void _connect() {
+    if (_connected) {
+      return;
+    }
+    try {
+      final channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+      _subscription = channel.stream.listen(
+        (event) => _addMessage('<= $event'),
+        onError: (error) {
+          _addMessage('! error: $error');
+          setState(() => _connected = false);
+        },
+        onDone: () {
+          _addMessage('! disconnected');
+          if (mounted) {
+            setState(() => _connected = false);
+          }
+        },
+      );
+      _channel = channel;
+      setState(() => _connected = true);
+      _addMessage('connected to $_wsUrl');
+    } catch (error) {
+      _addMessage('! connect failed: $error');
+    }
+  }
+
+  void _disconnect() {
+    _subscription?.cancel();
+    _subscription = null;
+    _channel?.sink.close();
+    _channel = null;
+    if (mounted) {
+      setState(() => _connected = false);
+    }
+  }
+
+  void _send(String text) {
+    if (!_connected || _channel == null) {
+      _addMessage('! not connected');
+      return;
+    }
+    _channel!.sink.add(text);
+    _addMessage('=> $text');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Realtime WebSocket')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _connected ? 'Connected' : 'Disconnected',
+                    style: TextStyle(
+                      color: _connected ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _connected ? null : _connect,
+                  child: const Text('Connect'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _connected ? _disconnect : null,
+                  child: const Text('Disconnect'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Message',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _send(_messageCtrl.text.trim()),
+                  child: const Text('Send'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _send('ping'),
+                icon: const Icon(Icons.wifi_tethering),
+                label: const Text('Send ping'),
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: _messages.isEmpty
+                  ? const Center(child: Text('No messages yet'))
+                  : ListView.separated(
+                      reverse: true,
+                      itemCount: _messages.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) =>
+                          Text(_messages[index]),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
