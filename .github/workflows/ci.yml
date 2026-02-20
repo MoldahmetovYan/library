@@ -64,7 +64,9 @@ jobs:
           JWT_SECRET: ci-secret-at-least-32-characters-long
           JWT_EXPIRATION: 86400000
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8081
-        run: ./mvnw test
+        run: |
+          chmod +x mvnw
+          ./mvnw test
 
   docker-build:
     name: Docker Build
