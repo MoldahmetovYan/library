@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/user_provider.dart';
+import '../../utils/error_mapper.dart';
 
 class UploadCoverPage extends ConsumerStatefulWidget {
   const UploadCoverPage({super.key});
@@ -40,13 +41,15 @@ class _UploadCoverPageState extends ConsumerState<UploadCoverPage> {
   Future<void> upload() async {
     final id = int.tryParse(idCtrl.text.trim());
     if (id == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Invalid book ID')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid book ID')));
       return;
     }
     if (filePath == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Select a file first')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select a file first')));
       return;
     }
 
@@ -61,8 +64,9 @@ class _UploadCoverPageState extends ConsumerState<UploadCoverPage> {
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(mapErrorMessage(error))));
     } finally {
       if (mounted) {
         setState(() => loading = false);

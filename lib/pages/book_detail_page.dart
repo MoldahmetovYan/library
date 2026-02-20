@@ -5,14 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants.dart';
 import '../models/book.dart';
 import '../providers/user_provider.dart';
+import '../utils/error_mapper.dart';
 import '../utils/json_utils.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
-  const BookDetailPage({
-    super.key,
-    required this.bookId,
-    this.initialBook,
-  });
+  const BookDetailPage({super.key, required this.bookId, this.initialBook});
 
   final int bookId;
   final Book? initialBook;
@@ -45,18 +42,16 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     try {
       final api = ref.read(apiProvider);
       final response = await api.getBook(widget.bookId);
-      final data = extractMap(response.data);
-      final fetchedBook = Book.fromJson(data);
+      final fetchedBook = Book.fromJson(extractMap(response.data));
       if (!mounted) return;
       setState(() {
         _book = fetchedBook;
       });
-      // Update history list after successful fetch.
       await ref.read(userProvider.notifier).refreshHistory();
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = error.toString();
+        _error = mapErrorMessage(error);
       });
     } finally {
       if (!mounted) return;
@@ -114,28 +109,20 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                     height: 32,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  errorWidget: (_, __, ___) => const Icon(
-                    Icons.image_not_supported,
-                    size: 48,
-                  ),
+                  errorWidget: (_, __, ___) =>
+                      const Icon(Icons.image_not_supported, size: 48),
                 ),
               ),
             ],
             const SizedBox(height: 16),
             Text(
               book?.author ?? 'Неизвестный автор',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             if (genre != null && genre.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  genre,
-                  style: const TextStyle(color: Colors.grey),
-                ),
+                child: Text(genre, style: const TextStyle(color: Colors.grey)),
               ),
             if (book?.averageRating != null)
               Padding(
@@ -173,8 +160,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
         title: Text(book?.title ?? 'Информация о книге'),
         actions: [
           IconButton(
-            tooltip:
-                isFavorite ? 'Удалить из избранного' : 'Добавить в избранное',
+            tooltip: isFavorite
+                ? 'Удалить из избранного'
+                : 'Добавить в избранное',
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
               color: isFavorite ? Colors.red : null,

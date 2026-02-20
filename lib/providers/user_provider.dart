@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../models/book.dart';
 import '../models/user.dart';
 import '../utils/auth_storage.dart';
+import '../utils/error_mapper.dart';
 import '../utils/json_utils.dart';
 
 class UserState {
@@ -53,10 +54,14 @@ class UserState {
       error: error == _sentinel ? this.error : error as String?,
       favorites: favorites ?? this.favorites,
       favoritesLoading: favoritesLoading ?? this.favoritesLoading,
-      favoritesError: favoritesError == _sentinel ? this.favoritesError : favoritesError as String?,
+      favoritesError: favoritesError == _sentinel
+          ? this.favoritesError
+          : favoritesError as String?,
       history: history ?? this.history,
       historyLoading: historyLoading ?? this.historyLoading,
-      historyError: historyError == _sentinel ? this.historyError : historyError as String?,
+      historyError: historyError == _sentinel
+          ? this.historyError
+          : historyError as String?,
     );
   }
 }
@@ -165,7 +170,11 @@ class UserController extends StateNotifier<UserState> {
 
   Future<void> refreshFavorites() async {
     if (!state.isAuthenticated) {
-      state = state.copyWith(favorites: const [], favoritesLoading: false, favoritesError: null);
+      state = state.copyWith(
+        favorites: const [],
+        favoritesLoading: false,
+        favoritesError: null,
+      );
       return;
     }
     state = state.copyWith(favoritesLoading: true, favoritesError: null);
@@ -189,7 +198,11 @@ class UserController extends StateNotifier<UserState> {
 
   Future<void> refreshHistory() async {
     if (!state.isAuthenticated) {
-      state = state.copyWith(history: const [], historyLoading: false, historyError: null);
+      state = state.copyWith(
+        history: const [],
+        historyLoading: false,
+        historyError: null,
+      );
       return;
     }
     state = state.copyWith(historyLoading: true, historyError: null);
@@ -283,16 +296,6 @@ class UserController extends StateNotifier<UserState> {
   }
 
   String _messageFromError(Object error) {
-    if (error is DioException) {
-      final data = error.response?.data;
-      if (data is Map && data['message'] != null) {
-        return data['message'].toString();
-      }
-      if (data is Map && data['error'] != null) {
-        return data['error'].toString();
-      }
-      return error.message ?? 'Request failed';
-    }
-    return error.toString();
+    return mapErrorMessage(error);
   }
 }

@@ -1,10 +1,9 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/book.dart';
 import '../../providers/user_provider.dart';
-import '../../utils/json_utils.dart';
+import '../../utils/error_mapper.dart';
 
 class BookFormPage extends ConsumerStatefulWidget {
   const BookFormPage({super.key, this.book});
@@ -58,8 +57,7 @@ class _BookFormPageState extends ConsumerState<BookFormPage> {
       'title': titleCtrl.text.trim(),
       'author': authorCtrl.text.trim(),
       'genre': genreCtrl.text.trim().isEmpty ? null : genreCtrl.text.trim(),
-      'description':
-          descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+      'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
     };
 
     setState(() => loading = true);
@@ -74,9 +72,10 @@ class _BookFormPageState extends ConsumerState<BookFormPage> {
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      final message = _extractErrorMessage(error);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      final message = mapErrorMessage(error);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) {
         setState(() => loading = false);
@@ -143,21 +142,5 @@ class _BookFormPageState extends ConsumerState<BookFormPage> {
       return '$fieldName must be at least 2 characters';
     }
     return null;
-  }
-
-  String _extractErrorMessage(Object error) {
-    if (error is DioException) {
-      final data = error.response?.data;
-      if (data is Map<String, dynamic>) {
-        final map = extractMap(data);
-        final message = map['message'] ?? map['error'];
-        if (message is String && message.isNotEmpty) {
-          return message;
-        }
-      } else if (data is String && data.isNotEmpty) {
-        return data;
-      }
-    }
-    return 'Failed to save book';
   }
 }

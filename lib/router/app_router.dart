@@ -19,9 +19,7 @@ import '../pages/settings/settings_page.dart';
 import '../providers/user_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final currentUser = ref.watch(
-    userProvider.select((state) => state.user),
-  );
+  final currentUser = ref.watch(userProvider.select((state) => state.user));
   final authNotifier = ref.watch(userProvider.notifier);
 
   return GoRouter(
@@ -75,7 +73,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                       if (id == null) {
                         return const _MissingBookScreen();
                       }
-                      final book = state.extra is Book ? state.extra as Book : null;
+                      final book = state.extra is Book
+                          ? state.extra as Book
+                          : null;
                       return BookDetailPage(bookId: id, initialBook: book);
                     },
                   ),
@@ -139,9 +139,7 @@ class _MissingBookScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: Text('Информация о книге недоступна'),
-      ),
+      body: Center(child: Text('Информация о книге недоступна')),
     );
   }
 }
