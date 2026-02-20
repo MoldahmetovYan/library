@@ -6,6 +6,13 @@ import '../utils/json_utils.dart';
 import 'user_provider.dart';
 import 'auth_provider.dart';
 
+enum BooksSortOption {
+  titleAsc,
+  titleDesc,
+  authorAsc,
+  ratingDesc,
+}
+
 class BooksState {
   const BooksState({
     this.books = const [],
@@ -16,6 +23,8 @@ class BooksState {
     this.error,
     this.searchError,
     this.searchQuery = '',
+    this.genreFilter,
+    this.sortOption = BooksSortOption.titleAsc,
   });
 
   final List<Book> books;
@@ -26,8 +35,47 @@ class BooksState {
   final String? error;
   final String? searchError;
   final String searchQuery;
+  final String? genreFilter;
+  final BooksSortOption sortOption;
 
-  List<Book> get visibleBooks => searchResults ?? books;
+  List<String> get availableGenres {
+    final genres = books
+        .map((book) => book.genre?.trim())
+        .whereType<String>()
+        .where((genre) => genre.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return genres;
+  }
+
+  List<Book> get visibleBooks {
+    final base = List<Book>.from(searchResults ?? books);
+    final filtered = genreFilter == null
+        ? base
+        : base
+            .where(
+              (book) =>
+                  (book.genre ?? '').toLowerCase() == genreFilter!.toLowerCase(),
+            )
+            .toList();
+
+    filtered.sort((a, b) {
+      switch (sortOption) {
+        case BooksSortOption.titleAsc:
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        case BooksSortOption.titleDesc:
+          return b.title.toLowerCase().compareTo(a.title.toLowerCase());
+        case BooksSortOption.authorAsc:
+          return a.author.toLowerCase().compareTo(b.author.toLowerCase());
+        case BooksSortOption.ratingDesc:
+          final left = a.averageRating ?? -1;
+          final right = b.averageRating ?? -1;
+          return right.compareTo(left);
+      }
+    });
+    return filtered;
+  }
 
   BooksState copyWith({
     List<Book>? books,
@@ -40,6 +88,8 @@ class BooksState {
     String? searchError,
     bool clearSearchError = false,
     String? searchQuery,
+    String? Function()? genreFilter,
+    BooksSortOption? sortOption,
   }) {
     return BooksState(
       books: books ?? this.books,
@@ -51,6 +101,8 @@ class BooksState {
       error: clearError ? null : (error ?? this.error),
       searchError: clearSearchError ? null : (searchError ?? this.searchError),
       searchQuery: searchQuery ?? this.searchQuery,
+      genreFilter: genreFilter != null ? genreFilter() : this.genreFilter,
+      sortOption: sortOption ?? this.sortOption,
     );
   }
 }
@@ -152,5 +204,19 @@ class BooksController extends StateNotifier<BooksState> {
         searchError: error.toString(),
       );
     }
+  }
+
+  void setGenreFilter(String? genre) {
+    final normalized = genre?.trim();
+    state = state.copyWith(
+      genreFilter: () => (normalized == null || normalized.isEmpty) ? null : normalized,
+    );
+  }
+
+  void setSortOption(BooksSortOption option) {
+    if (state.sortOption == option) {
+      return;
+    }
+    state = state.copyWith(sortOption: option);
   }
 }

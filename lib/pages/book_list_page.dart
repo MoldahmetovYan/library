@@ -16,6 +16,13 @@ class BookListPage extends ConsumerStatefulWidget {
 class _BookListPageState extends ConsumerState<BookListPage> {
   late final TextEditingController _searchCtrl;
 
+  static const Map<BooksSortOption, String> _sortLabels = {
+    BooksSortOption.titleAsc: 'Название (A-Z)',
+    BooksSortOption.titleDesc: 'Название (Z-A)',
+    BooksSortOption.authorAsc: 'Автор (A-Z)',
+    BooksSortOption.ratingDesc: 'Рейтинг (по убыванию)',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -40,13 +47,16 @@ class _BookListPageState extends ConsumerState<BookListPage> {
     final booksState = ref.watch(booksProvider);
     final booksController = ref.read(booksProvider.notifier);
     final userState = ref.watch(userProvider);
+    final isAdmin = userState.user?.role == 'ROLE_ADMIN';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Книги')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAdmin,
-        child: const Icon(Icons.admin_panel_settings),
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              onPressed: _openAdmin,
+              child: const Icon(Icons.admin_panel_settings),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -78,6 +88,61 @@ class _BookListPageState extends ConsumerState<BookListPage> {
               onChanged: booksController.search,
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<BooksSortOption>(
+                    value: booksState.sortOption,
+                    decoration: const InputDecoration(
+                      labelText: 'Сортировка',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: BooksSortOption.values
+                        .map(
+                          (option) => DropdownMenuItem<BooksSortOption>(
+                            value: option,
+                            child: Text(_sortLabels[option]!),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        booksController.setSortOption(value);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String?>(
+                    value: booksState.genreFilter,
+                    decoration: const InputDecoration(
+                      labelText: 'Жанр',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: <DropdownMenuItem<String?>>[
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Все жанры'),
+                      ),
+                      ...booksState.availableGenres.map(
+                        (genre) => DropdownMenuItem<String?>(
+                          value: genre,
+                          child: Text(genre),
+                        ),
+                      ),
+                    ],
+                    onChanged: booksController.setGenreFilter,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           if (booksState.error != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
